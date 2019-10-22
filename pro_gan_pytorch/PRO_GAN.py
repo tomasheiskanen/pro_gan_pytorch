@@ -697,7 +697,7 @@ class ProGAN:
 class ConditionalProGAN:
     """ Wrapper around the Generator and the Conditional Discriminator """
 
-    def __init__(self, num_classes, depth=7, latent_size=512,
+    def __init__(self, num_classes, num_features, depth=7, latent_size=512,
                  learning_rate=0.001, beta_1=0, beta_2=0.99,
                  eps=1e-8, drift=0.001, n_critic=1, use_eql=True,
                  loss="wgan-gp", use_ema=True, ema_decay=0.999,
@@ -746,6 +746,7 @@ class ConditionalProGAN:
         self.depth = depth
         self.use_ema = use_ema
         self.num_classes = num_classes  # required for matching aware
+        self.num_features = num_features
         self.ema_decay = ema_decay
         self.n_critic = n_critic
         self.use_eql = use_eql
@@ -995,12 +996,13 @@ class ConditionalProGAN:
 
         # create fixed_input for debugging
         temp_data_loader = get_data_loader(dataset, batch_sizes[0], num_workers=3)
-        _, fx_labels = next(iter(temp_data_loader))
+        _, (fx_labels, fx_features) = next(iter(temp_data_loader))
         # reshape them properly
         fixed_labels = self.one_hot_encode(fx_labels.view(-1, 1)).to(self.device)
+        fixed_features = fx_features.view(-1, 1).type(th.FloatTensor)
         fixed_input = th.randn(num_samples,
-                               self.latent_size - self.num_classes).to(self.device)
-        fixed_input = th.cat((fixed_labels[:num_samples], fixed_input), dim=-1)
+                               self.latent_size - self.num_classes - self.num_features).to(self.device)
+        fixed_input = th.cat((fixed_features[:num_samples], fixed_labels[:num_samples], fixed_input), dim=-1)
         del temp_data_loader  # delete the temp data_loader since it is not required anymore
 
         os.makedirs(sample_dir, exist_ok=True)  # make sure the directory exists
@@ -1032,15 +1034,16 @@ class ConditionalProGAN:
                     alpha = ticker / fader_point if ticker <= fader_point else 1
 
                     # extract current batch of data for training
-                    images, labels = batch
+                    images, (labels, features) = batch
                     images = images.to(self.device)
                     labels = labels.view(-1, 1)
+                    features = features.view(-1, 1).type(th.FloatTensor)
 
                     # create the input to the Generator
                     label_information = self.one_hot_encode(labels).to(self.device)
                     latent_vector = th.randn(images.shape[0],
-                                             self.latent_size - self.num_classes).to(self.device)
-                    gan_input = th.cat((label_information, latent_vector), dim=-1)
+                                             self.latent_size - self.num_classes - self.num_features).to(self.device)
+                    gan_input = th.cat((features, label_information, latent_vector), dim=-1)
 
                     # optimize the discriminator:
                     dis_loss = self.optimize_discriminator(gan_input, images,
