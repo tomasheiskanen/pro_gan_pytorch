@@ -999,7 +999,7 @@ class ConditionalProGAN:
         _, (fx_labels, fx_features) = next(iter(temp_data_loader))
         # reshape them properly
         fixed_labels = self.one_hot_encode(fx_labels.view(-1, 1)).to(self.device)
-        fixed_features = fx_features.view(-1, 1).type(th.FloatTensor)
+        fixed_features = fx_features.view(-1, 1).type(th.FloatTensor).to(self.device)
         fixed_input = th.randn(num_samples,
                                self.latent_size - self.num_classes - self.num_features).to(self.device)
         fixed_input = th.cat((fixed_features[:num_samples], fixed_labels[:num_samples], fixed_input), dim=-1)
@@ -1037,7 +1037,7 @@ class ConditionalProGAN:
                     images, (labels, features) = batch
                     images = images.to(self.device)
                     labels = labels.view(-1, 1)
-                    features = features.view(-1, 1).type(th.FloatTensor)
+                    features = features.view(-1, 1).type(th.FloatTensor).to(self.device)
 
                     # create the input to the Generator
                     label_information = self.one_hot_encode(labels).to(self.device)
