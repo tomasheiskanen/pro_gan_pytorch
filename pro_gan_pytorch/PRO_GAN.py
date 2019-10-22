@@ -953,6 +953,7 @@ class ConditionalProGAN:
 
     def train(self, dataset, epochs, batch_sizes,
               fade_in_percentage, start_depth=0, num_workers=3, feedback_factor=100,
+              num_samples=16,
               log_dir="./models/", sample_dir="./samples/", save_dir="./models/",
               checkpoint_factor=1):
         """
@@ -997,9 +998,9 @@ class ConditionalProGAN:
         _, fx_labels = next(iter(temp_data_loader))
         # reshape them properly
         fixed_labels = self.one_hot_encode(fx_labels.view(-1, 1)).to(self.device)
-        fixed_input = th.randn(fixed_labels.shape[0],
+        fixed_input = th.randn(num_samples,
                                self.latent_size - self.num_classes).to(self.device)
-        fixed_input = th.cat((fixed_labels, fixed_input), dim=-1)
+        fixed_input = th.cat((fixed_labels[:num_samples], fixed_input), dim=-1)
         del temp_data_loader  # delete the temp data_loader since it is not required anymore
 
         os.makedirs(sample_dir, exist_ok=True)  # make sure the directory exists
