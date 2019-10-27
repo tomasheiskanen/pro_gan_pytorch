@@ -701,6 +701,7 @@ class ConditionalProGAN:
                  learning_rate=0.001, beta_1=0, beta_2=0.99,
                  eps=1e-8, drift=0.001, n_critic=1, use_eql=True,
                  loss="wgan-gp", use_ema=True, ema_decay=0.999,
+                 add_noise=False,
                  device=th.device("cpu")):
         """
         constructor for the class
@@ -752,6 +753,7 @@ class ConditionalProGAN:
         self.use_eql = use_eql
         self.device = device
         self.drift = drift
+        self.add_noise = add_noise
 
         # define the optimizers for the discriminator and generator
         self.gen_optim = Adam(self.gen.parameters(), lr=learning_rate,
@@ -856,11 +858,15 @@ class ConditionalProGAN:
         """
 
         real_samples = self.__progressive_downsampling(real_batch, depth, alpha)
+        if self.add_noise:
+            real_samples = real_samples+th.normal(mean=th.zeros_like(real_samples), std=0.1).to(self.device)
 
         loss_val = 0
         for _ in range(self.n_critic):
             # generate a batch of samples
             fake_samples = self.gen(noise, depth, alpha).detach()
+            if self.add_noise:
+                fake_samples = fake_samples+th.normal(mean=th.zeros_like(fake_samples), std=0.1).to(self.device)
 
             loss = self.loss.dis_loss(real_samples, fake_samples,
                                       labels, depth, alpha)
